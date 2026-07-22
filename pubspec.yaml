@@ -1,6 +1,7 @@
 name: mr_shop_client
 description: MR Shop — Fresh Scent by Elo — application client
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -13,10 +14,10 @@ dependencies:
   # Réseau / API
   dio: ^5.4.0
 
-  # État de l'app (simple et suffisant pour ce projet)
+  # État de l'application
   provider: ^6.1.2
 
-  # Stockage sécurisé du token d'auth
+  # Stockage sécurisé du token
   flutter_secure_storage: ^9.0.0
 
   # Notifications push
@@ -24,12 +25,12 @@ dependencies:
   firebase_messaging: ^15.0.0
   flutter_local_notifications: ^17.2.1
 
-  # Paiement GeniusPay (checkout hébergé) + PWA fallback iOS
+  # Paiement / WebView
   webview_flutter: ^4.7.0
 
-  # Carte pour la sélection précise de l'adresse de livraison
+  # Carte / Géolocalisation
   google_maps_flutter: ^2.6.1
-  geolocator: ^12.0.0
+  geolocator: ^14.0.2
 
   # UI
   cached_network_image: ^3.3.1
@@ -38,11 +39,14 @@ dependencies:
   url_launcher: ^6.2.6
 
   cupertino_icons: ^1.0.6
+
+  # AdMob
   google_mobile_ads: ^5.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
 
@@ -51,9 +55,9 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/images/logo.png"
   min_sdk_android: 21
-  web:
-    generate: false
+
 flutter:
   uses-material-design: true
+
   assets:
     - assets/images/
