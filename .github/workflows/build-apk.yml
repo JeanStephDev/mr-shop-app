@@ -13,16 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       # ============================================================
-      # 1. Récupérer le projet
+      # 1. Checkout
       # ============================================================
       - name: Checkout du dépôt
         uses: actions/checkout@v4
 
 
       # ============================================================
-      # 2. Installer Java 17
+      # 2. Java 17
       # ============================================================
       - name: Installer Java 17
         uses: actions/setup-java@v4
@@ -33,7 +32,7 @@ jobs:
 
 
       # ============================================================
-      # 3. Installer Flutter
+      # 3. Flutter
       # ============================================================
       - name: Installer Flutter
         uses: subosito/flutter-action@v2
@@ -44,29 +43,16 @@ jobs:
 
 
       # ============================================================
-      # 4. Vérifier Flutter
+      # 4. Vérifier l'environnement
       # ============================================================
-      - name: Vérifier Flutter
+      - name: Vérifier Flutter et Android
         run: |
           flutter --version
           flutter doctor -v
 
 
       # ============================================================
-      # 5. Installer Android SDK 35
-      # ============================================================
-      - name: Installer Android SDK 35
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
-
-
-      # ============================================================
-      # 6. Générer le dossier Android
-      #
-      # Le projet ne possède pas encore android/.
-      # Flutter génère donc le squelette natif.
+      # 5. Générer le projet Android
       # ============================================================
       - name: Générer le projet Android
         run: |
@@ -78,8 +64,9 @@ jobs:
             --project-name mr_shop_client \
             .
 
+
       # ============================================================
-      # 7. Appliquer la configuration Android personnalisée
+      # 6. Appliquer la configuration Android personnalisée
       # ============================================================
       - name: Appliquer la configuration Android
         run: |
@@ -94,24 +81,28 @@ jobs:
 
 
       # ============================================================
-      # 8. Vérifier le package Android
+      # 7. Vérifier la configuration Android
       # ============================================================
       - name: Vérifier la configuration Android
         run: |
+          echo "=== build.gradle ==="
           grep -n "namespace" android/app/build.gradle
           grep -n "applicationId" android/app/build.gradle
           grep -n "compileSdk" android/app/build.gradle
 
+          echo "=== Android SDK ==="
+          flutter doctor -v
+
 
       # ============================================================
-      # 9. Restaurer le keystore
+      # 8. Restaurer le keystore
       # ============================================================
-      - name: Restaurer le keystore de signature
+      - name: Restaurer le keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "KEYSTORE_BASE64 non configuré."
+            echo "Erreur : KEYSTORE_BASE64 n'est pas configuré."
             exit 1
           fi
 
@@ -120,7 +111,7 @@ jobs:
 
 
       # ============================================================
-      # 10. Créer key.properties
+      # 9. Créer key.properties
       # ============================================================
       - name: Configurer la signature Release
         env:
@@ -137,9 +128,9 @@ jobs:
 
 
       # ============================================================
-      # 11. Configurer Google Maps
+      # 10. Google Maps
       # ============================================================
-      - name: Injecter la clé Google Maps
+      - name: Injecter Google Maps API Key
         env:
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: |
@@ -153,7 +144,7 @@ jobs:
 
 
       # ============================================================
-      # 12. Configurer AdMob App ID
+      # 11. AdMob App ID
       # ============================================================
       - name: Injecter AdMob App ID
         env:
@@ -169,15 +160,15 @@ jobs:
 
 
       # ============================================================
-      # 13. Installer les dépendances Flutter
+      # 12. Installer les dépendances
       # ============================================================
-      - name: Installer les dépendances
+      - name: Installer les dépendances Flutter
         run: |
           flutter pub get
 
 
       # ============================================================
-      # 14. Générer les icônes
+      # 13. Générer les icônes
       # ============================================================
       - name: Générer les icônes Android
         run: |
@@ -185,15 +176,15 @@ jobs:
 
 
       # ============================================================
-      # 15. Vérifier les dépendances
+      # 14. Vérifier Geolocator
       # ============================================================
-      - name: Vérifier Geolocator
+      - name: Vérifier les dépendances
         run: |
           flutter pub deps | grep -i geolocator || true
 
 
       # ============================================================
-      # 16. Construire l'APK Release signé
+      # 15. Build Release
       # ============================================================
       - name: Build APK Release
         env:
@@ -206,17 +197,17 @@ jobs:
 
 
       # ============================================================
-      # 17. Vérifier l'APK généré
+      # 16. Vérifier l'APK
       # ============================================================
-      - name: Vérifier APK
+      - name: Vérifier APK généré
         run: |
           ls -lh build/app/outputs/flutter-apk/
 
 
       # ============================================================
-      # 18. Publier l'APK
+      # 17. Upload APK
       # ============================================================
-      - name: Publier l'APK comme artefact
+      - name: Publier l'APK
         uses: actions/upload-artifact@v4
         with:
           name: mr-shop-client-apk
