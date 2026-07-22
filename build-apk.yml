@@ -1,0 +1,93 @@
+name: Build & Sign APK — MR Shop Client
+
+# Se déclenche à chaque push sur main, ou manuellement depuis l'onglet
+# "Actions" de GitHub (bouton "Run workflow").
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Java (requis par Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      # On génère les dossiers natifs (android/, ios/) via le vrai outil
+      # `flutter create`, dans un dossier temporaire, puis on ne récupère QUE
+      # android/ — ça garantit que le squelette Gradle (y compris les fichiers
+      # binaires comme gradle-wrapper.jar) est toujours parfaitement à jour
+      # avec la version de Flutter utilisée, sans qu'on ait à le maintenir
+      # nous-mêmes à la main.
+      - name: Générer le squelette Android natif
+        run: |
+          flutter create --platforms=android --org org.triax.mr.shop --project-name mr_shop_client /tmp/scaffold
+          cp -r /tmp/scaffold/android ./android
+
+      # Applique par-dessus nos fichiers personnalisés : permissions,
+      # Google Maps, AdMob, configuration de signature (voir android_overlay/).
+      - name: Appliquer la configuration Android personnalisée
+        run: |
+          cp android_overlay/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp android_overlay/app/build.gradle android/app/build.gradle
+          cp android_overlay/app/proguard-rules.pro android/app/proguard-rules.pro
+
+      # Décode le keystore stocké en base64 dans les secrets GitHub (voir
+      # BUILD_AND_SIGN_APK.md pour la procédure complète de création des secrets).
+      - name: Restaurer le keystore de signature
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/mr-shop-release.jks
+
+      - name: Écrire key.properties
+        run: |
+          cat <<EOF > android/key.properties
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=mr-shop-release.jks
+          EOF
+
+      # Remplace les placeholders Maps/AdMob par les vraies clés si elles sont
+      # configurées en secrets — sinon les valeurs par défaut (clé absente /
+      # ID de test) restent en place, et le build réussit quand même.
+      - name: Injecter les clés Maps / AdMob (si configurées)
+        run: |
+          if [ -n "${{ secrets.MAPS_API_KEY }}" ]; then
+            sed -i "s/YOUR_MAPS_API_KEY_HERE/${{ secrets.MAPS_API_KEY }}/" android/app/src/main/AndroidManifest.xml
+          fi
+          if [ -n "${{ secrets.ADMOB_APP_ID }}" ]; then
+            sed -i "s/ca-app-pub-3940256099942544~3347511713/${{ secrets.ADMOB_APP_ID }}/" android/app/src/main/AndroidManifest.xml
+          fi
+
+      - name: Installer les dépendances Flutter
+        run: flutter pub get
+
+      - name: Générer les icônes de l'app
+        run: dart run flutter_launcher_icons
+
+      - name: Build de l'APK signé
+        run: |
+          flutter build apk --release \
+            --dart-define=ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID || '' }} \
+            --dart-define=ADMOB_INTERSTITIAL_ID=${{ secrets.ADMOB_INTERSTITIAL_ID || '' }}
+
+      - name: Publier l'APK comme artefact téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: mr-shop-client-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
