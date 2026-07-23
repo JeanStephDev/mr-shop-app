@@ -31,7 +31,7 @@ class _MainNavigationState extends State<MainNavigation> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         backgroundColor: Colors.white,
-        indicatorColor: AppColors.orange.withValues(alpha: 0.15),
+        indicatorColor: AppColors.orange.withOpacity(0.15),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: AppColors.orange), label: 'Accueil'),
           NavigationDestination(icon: Icon(Icons.shopping_bag_outlined), selectedIcon: Icon(Icons.shopping_bag, color: AppColors.orange), label: 'Panier'),
