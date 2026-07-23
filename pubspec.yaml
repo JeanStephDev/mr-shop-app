@@ -29,6 +29,7 @@ dependencies:
 
   # Carte pour la sélection précise de l'adresse de livraison
   google_maps_flutter: ^2.6.1
+  permission_handler: ^11.3.1
 
   # UI
   cached_network_image: ^3.3.1
@@ -51,7 +52,7 @@ flutter_launcher_icons:
   image_path: "assets/images/logo.png"
   min_sdk_android: 21
   web:
-    generate: false
+    generate: true
 
 flutter:
   uses-material-design: true
