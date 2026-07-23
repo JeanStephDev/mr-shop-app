@@ -1,213 +1,91 @@
 name: Build & Sign APK — MR Shop Client
 
+# Se déclenche à chaque push sur main, ou manuellement depuis l'onglet
+# "Actions" de GitHub (bouton "Run workflow").
 on:
   push:
-    branches:
-      - main
-
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      # ============================================================
-      # 1. Checkout
-      # ============================================================
       - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-
-      # ============================================================
-      # 2. Java 17
-      # ============================================================
-      - name: Installer Java 17
+      - name: Installer Java (requis par Gradle)
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
-          cache: gradle
 
-
-      # ============================================================
-      # 3. Flutter
-      # ============================================================
       - name: Installer Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
-          channel: stable
-          cache: true
+          channel: 'stable'
 
-
-      # ============================================================
-      # 4. Vérifier l'environnement
-      # ============================================================
-      - name: Vérifier Flutter et Android
+      # On génère les dossiers natifs (android/, ios/) via le vrai outil
+      # `flutter create`, dans un dossier temporaire, puis on ne récupère QUE
+      # android/ — ça garantit que le squelette Gradle (y compris les fichiers
+      # binaires comme gradle-wrapper.jar) est toujours parfaitement à jour
+      # avec la version de Flutter utilisée, sans qu'on ait à le maintenir
+      # nous-mêmes à la main.
+      - name: Générer le squelette Android natif
         run: |
-          flutter --version
-          flutter doctor -v
+          flutter create --platforms=android --org org.triax.mr.shop --project-name mr_shop_client /tmp/scaffold
+          cp -r /tmp/scaffold/android ./android
 
-
-      # ============================================================
-      # 5. Générer le projet Android
-      # ============================================================
-      - name: Générer le projet Android
+      # Applique par-dessus nos fichiers personnalisés : permissions,
+      # Google Maps, AdMob, configuration de signature (voir android_overlay/).
+      - name: Appliquer la configuration Android personnalisée
         run: |
-          rm -rf android
+          cp android_overlay/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp android_overlay/app/build.gradle android/app/build.gradle
+          cp android_overlay/app/proguard-rules.pro android/app/proguard-rules.pro
 
-          flutter create \
-            --platforms=android \
-            --org org.triax.mr.shop.app \
-            --project-name mr_shop_client \
-            .
-
-
-      # ============================================================
-      # 6. Appliquer la configuration Android personnalisée
-      # ============================================================
-      - name: Appliquer la configuration Android
+      # Décode le keystore stocké en base64 dans les secrets GitHub (voir
+      # BUILD_AND_SIGN_APK.md pour la procédure complète de création des secrets).
+      - name: Restaurer le keystore de signature
         run: |
-          cp android_overlay/app/build.gradle \
-             android/app/build.gradle
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/mr-shop-release.jks
 
-          cp android_overlay/app/proguard-rules.pro \
-             android/app/proguard-rules.pro
-
-          cp android_overlay/app/src/main/AndroidManifest.xml \
-             android/app/src/main/AndroidManifest.xml
-
-
-      # ============================================================
-      # 7. Vérifier la configuration Android
-      # ============================================================
-      - name: Vérifier la configuration Android
-        run: |
-          echo "=== build.gradle ==="
-          grep -n "namespace" android/app/build.gradle
-          grep -n "applicationId" android/app/build.gradle
-          grep -n "compileSdk" android/app/build.gradle
-
-          echo "=== Android SDK ==="
-          flutter doctor -v
-
-
-      # ============================================================
-      # 8. Restaurer le keystore
-      # ============================================================
-      - name: Restaurer le keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Erreur : KEYSTORE_BASE64 n'est pas configuré."
-            exit 1
-          fi
-
-          echo "$KEYSTORE_BASE64" | base64 --decode \
-            > android/app/mr-shop-release.jks
-
-
-      # ============================================================
-      # 9. Créer key.properties
-      # ============================================================
-      - name: Configurer la signature Release
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      - name: Écrire key.properties
         run: |
           cat <<EOF > android/key.properties
-          storePassword=$KEYSTORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
           storeFile=mr-shop-release.jks
           EOF
 
-
-      # ============================================================
-      # 10. Google Maps
-      # ============================================================
-      - name: Injecter Google Maps API Key
-        env:
-          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      # Remplace les placeholders Maps/AdMob par les vraies clés si elles sont
+      # configurées en secrets — sinon les valeurs par défaut (clé absente /
+      # ID de test) restent en place, et le build réussit quand même.
+      - name: Injecter les clés Maps / AdMob (si configurées)
         run: |
-          if [ -n "$MAPS_API_KEY" ]; then
-            sed -i \
-              "s/YOUR_MAPS_API_KEY_HERE/$MAPS_API_KEY/g" \
-              android/app/src/main/AndroidManifest.xml
-          else
-            echo "MAPS_API_KEY non configurée."
+          if [ -n "${{ secrets.MAPS_API_KEY }}" ]; then
+            sed -i "s/YOUR_MAPS_API_KEY_HERE/${{ secrets.MAPS_API_KEY }}/" android/app/src/main/AndroidManifest.xml
+          fi
+          if [ -n "${{ secrets.ADMOB_APP_ID }}" ]; then
+            sed -i "s/ca-app-pub-3940256099942544~3347511713/${{ secrets.ADMOB_APP_ID }}/" android/app/src/main/AndroidManifest.xml
           fi
 
-
-      # ============================================================
-      # 11. AdMob App ID
-      # ============================================================
-      - name: Injecter AdMob App ID
-        env:
-          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-        run: |
-          if [ -n "$ADMOB_APP_ID" ]; then
-            sed -i \
-              "s/ca-app-pub-3940256099942544~3347511713/$ADMOB_APP_ID/g" \
-              android/app/src/main/AndroidManifest.xml
-          else
-            echo "ADMOB_APP_ID non configuré."
-          fi
-
-
-      # ============================================================
-      # 12. Installer les dépendances
-      # ============================================================
       - name: Installer les dépendances Flutter
-        run: |
-          flutter pub get
+        run: flutter pub get
 
+      - name: Générer les icônes de l'app
+        run: dart run flutter_launcher_icons
 
-      # ============================================================
-      # 13. Générer les icônes
-      # ============================================================
-      - name: Générer les icônes Android
-        run: |
-          dart run flutter_launcher_icons
-
-
-      # ============================================================
-      # 14. Vérifier Geolocator
-      # ============================================================
-      - name: Vérifier les dépendances
-        run: |
-          flutter pub deps | grep -i geolocator || true
-
-
-      # ============================================================
-      # 15. Build Release
-      # ============================================================
-      - name: Build APK Release
-        env:
-          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
-          ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+      - name: Build de l'APK signé
         run: |
           flutter build apk --release \
-            --dart-define=ADMOB_BANNER_ID="$ADMOB_BANNER_ID" \
-            --dart-define=ADMOB_INTERSTITIAL_ID="$ADMOB_INTERSTITIAL_ID"
+            --dart-define=ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID || '' }} \
+            --dart-define=ADMOB_INTERSTITIAL_ID=${{ secrets.ADMOB_INTERSTITIAL_ID || '' }}
 
-
-      # ============================================================
-      # 16. Vérifier l'APK
-      # ============================================================
-      - name: Vérifier APK généré
-        run: |
-          ls -lh build/app/outputs/flutter-apk/
-
-
-      # ============================================================
-      # 17. Upload APK
-      # ============================================================
-      - name: Publier l'APK
+      - name: Publier l'APK comme artefact téléchargeable
         uses: actions/upload-artifact@v4
         with:
           name: mr-shop-client-apk
