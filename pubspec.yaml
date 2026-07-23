@@ -29,7 +29,6 @@ dependencies:
 
   # Carte pour la sélection précise de l'adresse de livraison
   google_maps_flutter: ^2.6.1
-  geolocator: ^12.0.0
 
   # UI
   cached_network_image: ^3.3.1
