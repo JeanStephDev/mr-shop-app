@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
@@ -12,9 +11,9 @@ Future<void> main() async {
 
   await AdMobService.initialize();
 
-  // Nécessite d'avoir généré firebase_options.dart via `flutterfire configure`
-  // (voir README_FLUTTER.md, étape Firebase) avant de décommenter :
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Notifications push désactivées temporairement — voir
+  // lib/services/notification_service.dart et README_FLUTTER.md,
+  // section "Réactiver les notifications push".
 
   runApp(
     MultiProvider(
