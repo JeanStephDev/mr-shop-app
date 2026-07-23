@@ -11,7 +11,7 @@ class Ad {
         id: json['id'],
         type: json['type'],
         title: json['title'],
-        image: json['image'],
+        image: json['image_url'] ?? json['image'],
         linkUrl: json['link_url'],
       );
 }

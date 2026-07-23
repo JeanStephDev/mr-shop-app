@@ -1,6 +1,5 @@
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
-
 if (localPropertiesFile.exists()) {
     localPropertiesFile.withReader('UTF-8') { reader ->
         localProperties.load(reader)
@@ -8,29 +7,26 @@ if (localPropertiesFile.exists()) {
 }
 
 def flutterRoot = localProperties.getProperty('flutter.sdk')
-
 if (flutterRoot == null) {
-    throw new GradleException(
-        "Flutter SDK not found. Define location with flutter.sdk in the local.properties file."
-    )
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
 }
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-
 if (flutterVersionCode == null) {
     flutterVersionCode = '1'
 }
 
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
-
 if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-// Configuration de signature
+// Lit android/key.properties (jamais commité — voir BUILD_AND_SIGN_APK.md)
+// pour signer automatiquement le build release. Si le fichier n'existe pas
+// (ex: build de debug local), on retombe sur la signature debug par défaut
+// sans faire planter le build.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
-
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
@@ -41,65 +37,49 @@ apply plugin: "dev.flutter.flutter-gradle-plugin"
 
 android {
     namespace "org.triax.mr.shop.app"
-
-    // Android SDK 35 requis par les plugins récents
-    compileSdk 35
-
-    defaultConfig {
-        applicationId "org.triax.mr.shop.app"
-
-        minSdk 21
-        targetSdk 35
-
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
-
-        multiDexEnabled true
-    }
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = '1.8'
     }
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
 
+    defaultConfig {
+        applicationId "org.triax.mr.shop.app"
+        minSdkVersion 21
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        multiDexEnabled true
+    }
+
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
             keyPassword keystoreProperties['keyPassword']
-
-            storeFile keystoreProperties['storeFile']
-                ? file(keystoreProperties['storeFile'])
-                : null
-
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
         }
     }
 
     buildTypes {
         release {
-            // Utilise la clé release si key.properties existe.
-            // Sinon, utilise la clé debug pour permettre les builds de test.
-            signingConfig keystorePropertiesFile.exists()
-                ? signingConfigs.release
-                : signingConfigs.debug
-
+            // Signe avec la vraie clé si key.properties existe, sinon retombe
+            // sur la clé de debug (évite un échec de build en environnement
+            // de test sans keystore configuré).
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
-
-            proguardFiles(
-                getDefaultProguardFile(
-                    'proguard-android-optimize.txt'
-                ),
-                'proguard-rules.pro'
-            )
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -109,5 +89,8 @@ flutter {
 }
 
 dependencies {
+    // Le plugin Kotlin de Flutter inclut déjà le stdlib nécessaire — pas besoin
+    // de dépendance kotlin-stdlib manuelle qui risquerait de référencer une
+    // variable de version absente selon le template Flutter généré.
     implementation 'androidx.multidex:multidex:2.0.1'
 }
