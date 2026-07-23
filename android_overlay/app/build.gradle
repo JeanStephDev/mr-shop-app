@@ -21,10 +21,7 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-// Lit android/key.properties (jamais commité — voir BUILD_AND_SIGN_APK.md)
-// pour signer automatiquement le build release. Si le fichier n'existe pas
-// (ex: build de debug local), on retombe sur la signature debug par défaut
-// sans faire planter le build.
+// Lit android/key.properties
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -41,12 +38,17 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        // Active Core Library Desugaring requis par
+        // flutter_local_notifications
+        coreLibraryDesugaringEnabled true
+
+        // GitHub Actions utilise JDK 17
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -73,13 +75,16 @@ android {
 
     buildTypes {
         release {
-            // Signe avec la vraie clé si key.properties existe, sinon retombe
-            // sur la clé de debug (évite un échec de build en environnement
-            // de test sans keystore configuré).
-            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            signingConfig keystorePropertiesFile.exists()
+                ? signingConfigs.release
+                : signingConfigs.debug
+
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            proguardFiles getDefaultProguardFile(
+                'proguard-android-optimize.txt'
+            ), 'proguard-rules.pro'
         }
     }
 }
@@ -89,8 +94,10 @@ flutter {
 }
 
 dependencies {
-    // Le plugin Kotlin de Flutter inclut déjà le stdlib nécessaire — pas besoin
-    // de dépendance kotlin-stdlib manuelle qui risquerait de référencer une
-    // variable de version absente selon le template Flutter généré.
+    // Requis par flutter_local_notifications
+    // pour le Core Library Desugaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // Multidex
     implementation 'androidx.multidex:multidex:2.0.1'
 }
