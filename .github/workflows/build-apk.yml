@@ -24,8 +24,9 @@ jobs:
       - name: Installer Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          channel: 'stable' # toujours la dernière stable — évite les incompatibilités
+                             # Kotlin/AGP qui apparaissent quand une version figée
+                             # devient trop ancienne par rapport aux plugins utilisés
 
       # On génère les dossiers natifs (android/, ios/) via le vrai outil
       # `flutter create`, dans un dossier temporaire, puis on ne récupère QUE
@@ -35,17 +36,8 @@ jobs:
       # nous-mêmes à la main.
       - name: Générer le squelette Android natif
         run: |
-          flutter create --platforms=android --org org.triax.mr.shop.app --project-name mr_shop_client /tmp/scaffold
+          flutter create --platforms=android --org org.triax.mr.shop --project-name mr_shop_client /tmp/scaffold
           cp -r /tmp/scaffold/android ./android
-
-      # Le squelette généré par `flutter create` embarque parfois une version
-      # du plugin Kotlin trop ancienne pour certains plugins (webview_flutter,
-      # etc., compilés avec Kotlin 1.9+). On force une version moderne et
-      # compatible, quel que soit ce que `flutter create` a mis par défaut.
-      - name: Forcer une version Kotlin compatible
-        run: |
-          sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.24"/' android/settings.gradle
-          grep -n "kotlin.android" android/settings.gradle
 
       # Applique par-dessus nos fichiers personnalisés : permissions,
       # Google Maps, AdMob, configuration de signature (voir android_overlay/).
