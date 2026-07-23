@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme.dart';
 
 /// Écran de sélection précise de l'adresse : l'utilisateur déplace la carte,
 /// un repère fixe reste au centre, et on récupère lat/lng au moment de valider.
 /// Renvoie {'lat': double, 'lng': double} via Navigator.pop.
+///
+/// Centrage sur la position actuelle : on s'appuie sur le bouton natif
+/// "ma position" de Google Maps (myLocationButtonEnabled) plutôt que sur un
+/// plugin de géolocalisation séparé — évite un bug Gradle connu et encore
+/// non résolu du plugin geolocator_android (voir Baseflow/flutter-geolocator#1710)
+/// qui empêche le build release. On ne fait ici que demander la permission
+/// de localisation ; Google Maps SDK gère lui-même la récupération de la position.
 class MapPickerScreen extends StatefulWidget {
   const MapPickerScreen({super.key});
 
@@ -14,35 +21,20 @@ class MapPickerScreen extends StatefulWidget {
 }
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
-  GoogleMapController? _controller;
-  LatLng _center = const LatLng(5.3600, -4.0083); // Abidjan par défaut
-  bool _isLocating = true;
+  static const LatLng _abidjanCenter = LatLng(5.3600, -4.0083);
+  LatLng _center = _abidjanCenter;
+  bool _locationEnabled = false;
 
   @override
   void initState() {
     super.initState();
-    _locateMe();
+    _requestLocationPermission();
   }
 
-  Future<void> _locateMe() async {
-    try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        final requested = await Geolocator.requestPermission();
-        if (requested == LocationPermission.denied || requested == LocationPermission.deniedForever) {
-          setState(() => _isLocating = false);
-          return;
-        }
-      }
-
-      final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _center = LatLng(position.latitude, position.longitude);
-        _isLocating = false;
-      });
-      _controller?.animateCamera(CameraUpdate.newLatLng(_center));
-    } catch (_) {
-      setState(() => _isLocating = false); // reste sur Abidjan par défaut si géoloc refusée/indisponible
+  Future<void> _requestLocationPermission() async {
+    final status = await Permission.location.request();
+    if (mounted) {
+      setState(() => _locationEnabled = status.isGranted);
     }
   }
 
@@ -54,14 +46,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         alignment: Alignment.center,
         children: [
           GoogleMap(
-            initialCameraPosition: CameraPosition(target: _center, zoom: 15),
-            onMapCreated: (controller) => _controller = controller,
+            initialCameraPosition: const CameraPosition(target: _abidjanCenter, zoom: 13),
             onCameraMove: (position) => _center = position.target,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            myLocationEnabled: _locationEnabled,
+            myLocationButtonEnabled: _locationEnabled,
           ),
           const Icon(Icons.location_on, size: 44, color: AppColors.orange), // repère fixe au centre
-          if (_isLocating) const Positioned(top: 16, child: CircularProgressIndicator()),
           Positioned(
             bottom: 24,
             left: 20,
