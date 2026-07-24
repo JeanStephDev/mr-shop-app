@@ -23,19 +23,31 @@ class AdMobService {
   static int _productViewCount = 0;
 
   static Future<void> initialize() async {
-    await MobileAds.instance.initialize();
-    _loadInterstitial();
+    try {
+      await MobileAds.instance.initialize();
+      _loadInterstitial();
+    } catch (e) {
+      // Sur un appareil sans Google Play Services (ou hors ligne au premier
+      // lancement), l'initialisation peut échouer — l'app doit continuer
+      // à fonctionner normalement, juste sans publicités.
+      // ignore: avoid_print
+      print('AdMob indisponible (non bloquant) : $e');
+    }
   }
 
   static void _loadInterstitial() {
-    InterstitialAd.load(
-      adUnitId: interstitialAdUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) => _interstitialAd = ad,
-        onAdFailedToLoad: (_) => _interstitialAd = null,
-      ),
-    );
+    try {
+      InterstitialAd.load(
+        adUnitId: interstitialAdUnitId,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) => _interstitialAd = ad,
+          onAdFailedToLoad: (_) => _interstitialAd = null,
+        ),
+      );
+    } catch (_) {
+      // Idem : un échec de chargement d'interstitiel ne doit jamais planter l'app.
+    }
   }
 
   /// À appeler à chaque consultation de fiche produit. Affiche un
