@@ -9,7 +9,13 @@ import 'services/admob_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await AdMobService.initialize();
+  try {
+    await AdMobService.initialize();
+  } catch (e) {
+    // Ne doit JAMAIS empêcher l'app de démarrer — ex: appareil sans Google
+    // Play Services, ou réseau indisponible au tout premier lancement.
+    debugPrint('AdMob a échoué à s\'initialiser (non bloquant) : $e');
+  }
 
   // Notifications push désactivées temporairement — voir
   // lib/services/notification_service.dart et README_FLUTTER.md,
