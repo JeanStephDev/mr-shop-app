@@ -46,6 +46,12 @@ jobs:
           cp android_overlay/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp android_overlay/app/build.gradle android/app/build.gradle
           cp android_overlay/app/proguard-rules.pro android/app/proguard-rules.pro
+          # Les templates Flutter récents génèrent build.gradle.kts en plus
+          # du .gradle classique qu'on vient de copier par-dessus — supprime
+          # le .kts pour éviter toute ambiguïté ("Both build.gradle and
+          # build.gradle.kts exist" est un avertissement, pas une erreur,
+          # mais autant l'éliminer proprement).
+          rm -f android/app/build.gradle.kts
 
       # Décode le keystore stocké en base64 dans les secrets GitHub (voir
       # BUILD_AND_SIGN_APK.md pour la procédure complète de création des secrets).
