@@ -1,0 +1,53 @@
+name: Build & Deploy Web — MR Shop Client
+
+# Se déclenche à chaque push sur main, ou manuellement.
+# Résultat : une vraie URL https://TON-USER.github.io/mr-shop-app/ ouvrable
+# depuis n'importe quel navigateur (y compris directement sur ton téléphone,
+# sans rien installer). Sert à isoler la cause d'un crash Android : si l'app
+# fonctionne ici mais plante sur l'APK, le bug est spécifique à Android natif
+# (signature, R8, plugin natif) — pas dans notre code Dart/logique métier.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Installer les dépendances Flutter
+        run: flutter pub get
+
+      - name: Build de la version Web
+        run: flutter build web --release --base-href /mr-shop-app/
+
+      - name: Préparer l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
