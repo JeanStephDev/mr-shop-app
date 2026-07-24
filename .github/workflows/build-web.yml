@@ -40,6 +40,12 @@ jobs:
       - name: Installer les dépendances Flutter
         run: flutter pub get
 
+      # Le dossier web/ n'est pas commité (comme android/ pour l'APK) —
+      # `flutter create` sur un projet existant complète uniquement les
+      # fichiers manquants (ici : web/) sans toucher à lib/ ni pubspec.yaml.
+      - name: Générer le dossier web manquant
+        run: flutter create --platforms web .
+
       - name: Build de la version Web
         run: flutter build web --release --base-href /mr-shop-app/
 
