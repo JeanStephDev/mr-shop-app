@@ -4,7 +4,7 @@ name: Build & Sign APK — MR Shop Client
 # "Actions" de GitHub (bouton "Run workflow").
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
