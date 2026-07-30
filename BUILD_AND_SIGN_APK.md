@@ -2,6 +2,39 @@
 
 Package cible : **`org.triax.mr.shop.app`**
 
+## 🔍 Diagnostiquer un crash sans PC : la version Web
+
+Un deuxième workflow (`.github/workflows/build-web.yml`) build une version Web
+de l'app et la publie automatiquement sur **GitHub Pages** — une vraie URL
+HTTPS ouvrable depuis n'importe quel navigateur, y compris directement sur
+ton téléphone, sans rien télécharger ni installer.
+
+**Pourquoi c'est utile** : si l'app fonctionne sur cette version Web mais
+plante sur l'APK Android, ça prouve que le bug est spécifique à Android natif
+(signature, minification R8, plugin natif incompatible) — pas dans notre
+code Dart. Si elle plante aussi sur Web, le bug est dans la logique de l'app
+elle-même, ce qui oriente la recherche très différemment.
+
+### Activer GitHub Pages (une seule fois)
+
+1. Sur ton dépôt : **Settings** → **Pages** (menu de gauche).
+2. Section "Build and deployment" → **Source** → choisis **"GitHub Actions"**.
+3. Rien d'autre à configurer, le workflow se charge du reste.
+
+### Utiliser
+
+Le workflow se lance automatiquement à chaque push (ou manuellement depuis
+l'onglet **Actions** → "Build & Deploy Web — MR Shop Client" → "Run workflow").
+Une fois terminé (✅), va dans **Settings** → **Pages** : l'URL de ton app
+est affichée en haut ("Your site is live at..."). Ouvre-la sur ton téléphone.
+
+⚠️ Limites de cette version Web (attendues, pas des bugs) :
+- Le paiement GeniusPay (WebView) et les notifications ne fonctionnent pas
+  pareil sur Web — ce n'est pas grave, l'objectif est juste de vérifier que
+  l'app s'ouvre et navigue normalement (écran de connexion, catalogue...).
+- AdMob n'existe pas sur Web (plugin Android/iOS uniquement) — l'app doit
+  simplement continuer à fonctionner sans pub grâce aux `try/catch` déjà en place.
+
 Toute la chaîne (génération du projet Android, signature, build) tourne dans
 le cloud via **GitHub Actions**. Tu n'as besoin ni de Flutter, ni de VS Code,
 ni d'Android Studio installés localement — juste un compte GitHub et un
@@ -98,6 +131,48 @@ directement). Pour le Play Store, il faut un `.aab` : dans
 et le chemin d'artefact par `build/app/outputs/bundle/release/app-release.aab`.
 Tu peux aussi dupliquer le job pour produire les deux (`.apk` ET `.aab`) à
 chaque run si tu préfères garder les deux options.
+
+## App Links Android — ouvrir l'app depuis store.hexa-node.site
+
+Une fois configuré, un lien `https://store.hexa-node.site/produit/xxx` ouvre
+directement l'app (si installée) au lieu du navigateur. Sans ce fichier, le
+lien ouvre toujours le navigateur — ce n'est pas bloquant, juste moins fluide.
+
+1. Récupère l'empreinte SHA-256 de ta clé de signature (celle générée à
+   l'étape 2) :
+   ```bash
+   keytool -list -v -keystore mr-shop-release.jks -alias mr-shop-key
+   ```
+   Copie la ligne `SHA256:` (format `AA:BB:CC:...`).
+
+2. Crée le fichier `assetlinks.json` :
+   ```json
+   [{
+     "relation": ["delegate_permission/common.handle_all_urls"],
+     "target": {
+       "namespace": "android_app",
+       "package_name": "org.triax.mr.shop.app",
+       "sha256_cert_fingerprints": ["TON_EMPREINTE_SHA256_ICI"]
+     }
+   }]
+   ```
+
+3. Sur ton VPS, dépose ce fichier à l'emplacement exact :
+   ```bash
+   mkdir -p /var/www/mr-shop-client-web/.well-known
+   nano /var/www/mr-shop-client-web/.well-known/assetlinks.json
+   # colle le JSON ci-dessus
+   ```
+   (`/var/www/mr-shop-client-web` est le dossier qui sert `store.hexa-node.site`,
+   voir DEPLOIEMENT.md du backend).
+
+4. Vérifie que ça répond bien en JSON sur
+   `https://store.hexa-node.site/.well-known/assetlinks.json`.
+
+⚠️ Ceci ne fonctionne que sur **Android**. Sans app iOS native (seulement la
+PWA), il n'y a pas d'équivalent "Universal Links" possible côté iPhone — un
+lien store.hexa-node.site ouvre toujours Safari sur iOS, ce qui est normal
+et attendu.
 
 ## Si le build échoue
 

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../widgets/auth_gate.dart';
 import '../cart/cart_screen.dart';
 import '../orders/order_history_screen.dart';
 import '../profile/profile_screen.dart';
 import 'home_screen.dart';
 
-/// Coquille de navigation principale (bottom nav), affichée une fois connecté.
+/// Coquille de navigation principale (bottom nav). Accueil/Panier restent
+/// consultables sans compte — Commandes/Profil demandent une connexion
+/// (voir AuthGate).
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
@@ -19,8 +22,8 @@ class _MainNavigationState extends State<MainNavigation> {
   final _screens = const [
     HomeScreen(),
     CartScreen(),
-    OrderHistoryScreen(),
-    ProfileScreen(),
+    AuthGate(message: 'Connectez-vous pour voir vos commandes', child: OrderHistoryScreen()),
+    AuthGate(message: 'Connectez-vous pour accéder à votre profil', child: ProfileScreen()),
   ];
 
   @override

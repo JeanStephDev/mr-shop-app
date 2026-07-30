@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../auth/phone_entry_screen.dart';
+import '../home/main_navigation.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -46,7 +46,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () async {
               await auth.logout();
               if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const PhoneEntryScreen()), (r) => false);
+                Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const MainNavigation()), (r) => false);
               }
             },
           ),

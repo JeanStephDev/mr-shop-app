@@ -48,17 +48,50 @@ Dans `lib/core/constants.dart` :
 - Test local (appareil physique, même Wi-Fi) : `http://IP_DE_TON_PC:8000/api/v1`
 - Une fois le VPS déployé sur le domaine de test : `https://www.hexa-node.site/api/v1`
 
-## Étape 4 — Firebase (notifications push)
+## Étape 4 — Réactiver les notifications push (Firebase)
 
+⚠️ **Firebase est désactivé pour l'instant** — `firebase_core`/`firebase_messaging`
+ont été retirés de `pubspec.yaml` car leur composant natif Android plante
+l'app AU DÉMARRAGE tant qu'aucun `google-services.json` n'existe. L'app
+fonctionne normalement sans, juste sans notifications push pour le moment.
+
+Pour les réactiver, une fois que tu as un projet Firebase :
+
+**1. Configurer Firebase**
 ```bash
 dart pub global activate flutterfire_cli
 flutterfire configure
 ```
-Génère `lib/firebase_options.dart`. Décommente ensuite les 2 lignes Firebase
-dans `lib/main.dart` :
+Ça génère `lib/firebase_options.dart` et surtout `android/app/google-services.json`
+(régénéré à chaque run CI puisque `android/` n'est pas commité — voir note en bas).
+
+**2. Remettre les dépendances dans `pubspec.yaml`**, en décommentant :
+```yaml
+  firebase_core: ^3.1.0
+  firebase_messaging: ^15.0.0
+```
+
+**3. Remettre l'initialisation dans `lib/main.dart`** :
 ```dart
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+// ...
 await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 ```
+
+**4. Restaurer `lib/services/notification_service.dart`** avec le contenu complet
+(FCM + notifications locales + navigation au tap) — reprends la version
+donnée plus haut dans notre conversation, ou demande-moi de te la redonner.
+
+**5. Appliquer le plugin Google Services côté Android**, dans
+`android_overlay/app/build.gradle`, ajoute en toute première ligne :
+```gradle
+apply plugin: 'com.google.gms.google-services'
+```
+et dans le workflow (`.github/workflows/build-apk.yml`), ajoute une étape
+juste après "Générer le squelette Android natif" pour copier ton
+`google-services.json` (stocké en secret GitHub, encodé en base64, comme le
+keystore) vers `android/app/google-services.json` avant le build.
 
 ## Étape 4bis — AdMob (publicités)
 
@@ -101,7 +134,7 @@ await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
    GMSServices.provideAPIKey("TA_CLE_ICI")
    ```
    (nécessite `import GoogleMaps` en haut du fichier)
-4. **Permissions de localisation** (utilisées par `geolocator` pour centrer la carte) :
+4. **Permissions de localisation** (demandées via `permission_handler`, utilisées par Google Maps pour afficher/centrer sur la position actuelle) :
    - Android, dans `AndroidManifest.xml` (avant `<application>`) :
      ```xml
      <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -141,7 +174,7 @@ pour tester, mais à ne jamais distribuer publiquement).
 ```bash
 flutter build apk --release        # → build/app/outputs/flutter-apk/app-release.apk
 flutter build appbundle --release  # → pour le Play Store (.aab)
-flutter build web --release        # → build/web/, à déposer sur app.hexa-node.site
+flutter build web --release        # → build/web/, à déposer sur store.hexa-node.site
 ```
 
 ### iOS

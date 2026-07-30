@@ -21,7 +21,10 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-// Lit android/key.properties
+// Lit android/key.properties (jamais commité — voir BUILD_AND_SIGN_APK.md)
+// pour signer automatiquement le build release. Si le fichier n'existe pas
+// (ex: build de debug local), on retombe sur la signature debug par défaut
+// sans faire planter le build.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -38,11 +41,10 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
-        // Active Core Library Desugaring requis par
-        // flutter_local_notifications
+        // Requis par flutter_local_notifications
         coreLibraryDesugaringEnabled true
 
-        // GitHub Actions utilise JDK 17
+        // GitHub Actions (Temurin) utilise JDK 17
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -75,16 +77,17 @@ android {
 
     buildTypes {
         release {
-            signingConfig keystorePropertiesFile.exists()
-                ? signingConfigs.release
-                : signingConfigs.debug
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
 
-            minifyEnabled true
-            shrinkResources true
-
-            proguardFiles getDefaultProguardFile(
-                'proguard-android-optimize.txt'
-            ), 'proguard-rules.pro'
+            // Minification désactivée TEMPORAIREMENT : R8 peut supprimer par
+            // erreur des classes nécessaires à certains plugins (accès par
+            // réflexion) si les règles ProGuard sont incomplètes — cause très
+            // classique d'un crash au lancement qui n'apparaît qu'en release,
+            // jamais en debug. On réactivera une fois l'app stable, avec des
+            // règles ProGuard complètes et testées.
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -94,10 +97,11 @@ flutter {
 }
 
 dependencies {
-    // Requis par flutter_local_notifications
-    // pour le Core Library Desugaring
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
-
-    // Multidex
+    // Le plugin Kotlin de Flutter inclut déjà le stdlib nécessaire — pas besoin
+    // de dépendance kotlin-stdlib manuelle qui risquerait de référencer une
+    // variable de version absente selon le template Flutter généré.
     implementation 'androidx.multidex:multidex:2.0.1'
+
+    // Requis par flutter_local_notifications (Core Library Desugaring)
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }

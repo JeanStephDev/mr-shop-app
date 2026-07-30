@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../auth/welcome_auth_screen.dart';
 import '../checkout/address_list_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
+
+  Future<void> _startCheckout(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+
+    if (!auth.isAuthenticated) {
+      // Un visiteur peut remplir son panier librement, mais doit se
+      // connecter/créer un compte pour valider la commande.
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WelcomeAuthScreen()));
+      if (!context.mounted || !context.read<AuthProvider>().isAuthenticated) return;
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddressListScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +94,7 @@ class CartScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddressListScreen())),
+                      onPressed: () => _startCheckout(context),
                       child: const Text('Passer la commande →'),
                     ),
                   ),

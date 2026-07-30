@@ -33,17 +33,40 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
+            if (catalog.isOffline)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
+                child: const Row(
+                  children: [
+                    Icon(Icons.cloud_off, size: 16, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('Serveur injoignable — exemples affichés', style: TextStyle(fontSize: 12, color: Colors.orange))),
+                  ],
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('MR SHOP · FRESH SCENT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navySoft)),
-                    Text('Bonjour, ${user?.name.split(' ').first ?? ''} 👋', style: Theme.of(context).textTheme.headlineSmall),
+                    const Text('MR SHOP · BY ELO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navySoft)),
+                    Text(
+                      user != null ? 'Bonjour, ${user.name.split(' ').first} 👋' : 'Bienvenue 👋',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ],
                 ),
-                const CircleAvatar(backgroundColor: AppColors.navy, child: Icon(Icons.person, color: Colors.white, size: 18)),
+                GestureDetector(
+                  onTap: () {
+                    if (user == null) {
+                      Navigator.of(context).pushNamed('/login');
+                    }
+                  },
+                  child: const CircleAvatar(backgroundColor: AppColors.navy, child: Icon(Icons.person, color: Colors.white, size: 18)),
+                ),
               ],
             ),
             const SizedBox(height: 20),

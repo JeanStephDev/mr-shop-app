@@ -10,8 +10,20 @@ class AuthProvider extends ChangeNotifier {
   AppUser? user;
   bool isLoading = false;
   String? error;
+  bool isDemoMode = false;
 
   bool get isAuthenticated => user != null;
+
+  /// Connexion de démonstration — SANS appel réseau, pour naviguer dans
+  /// l'app et montrer les écrans même si l'API/le serveur est indisponible.
+  /// Bouton "Continuer en mode démo" sur WelcomeAuthScreen. À ne jamais
+  /// utiliser en production réelle (isDemoMode désactive certains appels
+  /// réseau ailleurs, voir CatalogProvider/OrderService).
+  void loginAsDemo() {
+    user = AppUser(id: 0, name: 'Client Démo', phone: '0700000000', role: 'client');
+    isDemoMode = true;
+    notifyListeners();
+  }
 
   Future<void> tryAutoLogin() async {
     final token = await StorageService.getToken();
@@ -46,12 +58,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifyOtp({required String phone, required String code, String? name}) async {
+  Future<bool> register({
+    required String name,
+    required String phone,
+    required String otpCode,
+    required String password,
+    required bool termsAccepted,
+  }) async {
     isLoading = true;
     error = null;
     notifyListeners();
     try {
-      user = await _authService.verifyOtp(phone: phone, code: code, name: name);
+      user = await _authService.register(
+        name: name,
+        phone: phone,
+        otpCode: otpCode,
+        password: password,
+        termsAccepted: termsAccepted,
+      );
       await NotificationService.initialize();
       return true;
     } catch (e) {
@@ -63,9 +87,61 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> login({required String phone, required String password}) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      user = await _authService.login(phone: phone, password: password);
+      await NotificationService.initialize();
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> sendPasswordResetOtp(String phone) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      await _authService.sendPasswordResetOtp(phone);
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resetPassword({required String phone, required String otpCode, required String password}) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      await _authService.resetPassword(phone: phone, otpCode: otpCode, password: password);
+      return true;
+    } catch (e) {
+      error = e.toString();
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
-    await _authService.logout();
+    if (!isDemoMode) {
+      await _authService.logout();
+    }
     user = null;
+    isDemoMode = false;
     notifyListeners();
   }
 }

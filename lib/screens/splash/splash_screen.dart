@@ -4,12 +4,13 @@ import '../../core/theme.dart';
 import '../../models/ad.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/ad_service.dart';
-import '../auth/phone_entry_screen.dart';
+import '../../widgets/logo_reveal_animation.dart';
 import '../home/main_navigation.dart';
 
-/// Écran de démarrage : vérifie la session, PUIS affiche la pub d'ouverture
-/// SEULEMENT si l'API en renvoie une (elle applique déjà les règles non-intrusives
-/// : 1x/jour max, jamais 2x en moins de 20h — voir AdController côté Laravel).
+/// Écran de démarrage : joue l'animation du logo pendant que la session est
+/// vérifiée en arrière-plan, PUIS affiche la pub d'ouverture SEULEMENT si
+/// l'API en renvoie une (règles non-intrusives déjà appliquées côté API :
+/// 1x/jour max, jamais 2x en moins de 20h — voir AdController Laravel).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,6 +19,9 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _animationDone = false;
+  bool _bootstrapDone = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +32,22 @@ class _SplashScreenState extends State<SplashScreen> {
     final authProvider = context.read<AuthProvider>();
     await authProvider.tryAutoLogin();
 
+    if (!mounted) return;
+    setState(() => _bootstrapDone = true);
+    _maybeProceed();
+  }
+
+  void _onAnimationFinished() {
+    setState(() => _animationDone = true);
+    _maybeProceed();
+  }
+
+  // N'avance qu'une fois l'animation ET la vérification de session terminées
+  // toutes les deux — l'animation ne se coupe jamais en plein milieu, mais
+  // n'attend pas non plus inutilement si le réseau est lent.
+  void _maybeProceed() async {
+    if (!_animationDone || !_bootstrapDone) return;
+
     final ad = await AdService().getSplashAd();
     if (!mounted) return;
 
@@ -36,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     if (!mounted) return;
-    _goNext(authProvider.isAuthenticated);
+    _goNext();
   }
 
   Future<void> _showSplashAd(Ad ad) async {
@@ -71,27 +91,20 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  void _goNext(bool isAuthenticated) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => isAuthenticated ? const MainNavigation() : const PhoneEntryScreen(),
-    ));
+  void _goNext() {
+    // Navigation invité : la boutique reste consultable sans compte — la
+    // connexion n'est demandée qu'au moment d'agir (commander, voir ses
+    // commandes, son profil). Voir WelcomeAuthScreen et les gardes dans
+    // CartScreen/MainNavigation.
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const MainNavigation()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.navy,
+      backgroundColor: AppColors.logoBg,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('MR Shop', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white)),
-            const SizedBox(height: 8),
-            const Text('Fresh Scent by Elo', style: TextStyle(color: AppColors.peach)),
-            const SizedBox(height: 30),
-            const CircularProgressIndicator(color: AppColors.orange),
-          ],
-        ),
+        child: LogoRevealAnimation(onFinished: _onAnimationFinished),
       ),
     );
   }

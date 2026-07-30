@@ -3,6 +3,9 @@ import '../core/api_client.dart';
 import '../core/storage_service.dart';
 import '../models/user.dart';
 
+/// Parcours client : OTP UNE SEULE FOIS à l'inscription (vérifie le numéro),
+/// puis connexion par numéro + mot de passe ensuite — jamais d'OTP à chaque
+/// connexion. Voir ClientAuthController côté API pour le détail du flux.
 class AuthService {
   final _dio = ApiClient().dio;
 
@@ -14,18 +17,62 @@ class AuthService {
     }
   }
 
-  Future<AppUser> verifyOtp({required String phone, required String code, String? name}) async {
+  Future<AppUser> register({
+    required String name,
+    required String phone,
+    required String otpCode,
+    required String password,
+    required bool termsAccepted,
+  }) async {
     try {
-      final response = await _dio.post('/auth/client/verify-otp', data: {
+      final response = await _dio.post('/auth/client/register', data: {
+        'name': name,
         'phone': phone,
-        'code': code,
-        if (name != null) 'name': name,
+        'otp_code': otpCode,
+        'password': password,
+        'terms_accepted': termsAccepted,
       });
 
       final token = response.data['token'];
       await StorageService.saveToken(token);
 
       return AppUser.fromJson(response.data['user']);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<AppUser> login({required String phone, required String password}) async {
+    try {
+      final response = await _dio.post('/auth/client/login', data: {
+        'phone': phone,
+        'password': password,
+      });
+
+      final token = response.data['token'];
+      await StorageService.saveToken(token);
+
+      return AppUser.fromJson(response.data['user']);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<void> sendPasswordResetOtp(String phone) async {
+    try {
+      await _dio.post('/auth/client/forgot-password/send-otp', data: {'phone': phone});
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<void> resetPassword({required String phone, required String otpCode, required String password}) async {
+    try {
+      await _dio.post('/auth/client/forgot-password/reset', data: {
+        'phone': phone,
+        'otp_code': otpCode,
+        'password': password,
+      });
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }

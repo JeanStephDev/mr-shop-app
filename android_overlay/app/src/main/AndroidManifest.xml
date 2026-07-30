@@ -33,6 +33,34 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Android App Links : si l'app est installée, cliquer sur un
+                 lien https://store.hexa-node.site/... l'ouvre directement
+                 dans l'app plutôt que dans le navigateur. Nécessite de
+                 publier /.well-known/assetlinks.json sur ce domaine — voir
+                 BUILD_AND_SIGN_APK.md, section "App Links Android". Sans ce
+                 fichier, autoVerify échoue silencieusement et les liens
+                 s'ouvrent simplement dans le navigateur (comportement de
+                 repli sûr, rien ne casse). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="store.hexa-node.site"/>
+            </intent-filter>
+
+            <!-- Android App Links : si l'app est installée, un lien
+                 https://store.hexa-node.site/... l'ouvre directement au lieu
+                 du navigateur (ex: partage d'un produit). Nécessite de
+                 publier un fichier assetlinks.json signé sur
+                 https://store.hexa-node.site/.well-known/assetlinks.json —
+                 voir BUILD_AND_SIGN_APK.md, section "App Links Android". -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="store.hexa-node.site"/>
+            </intent-filter>
         </activity>
 
         <meta-data

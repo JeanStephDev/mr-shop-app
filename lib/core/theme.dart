@@ -11,6 +11,8 @@ class AppColors {
   static const yellow = Color(0xFFF2B705);
   static const orange = Color(0xFFEF7B2E);
   static const cream = Color(0xFFFBF7F2);
+  static const logoBrown = Color(0xFF966957); // couleur exacte du trait/texte du logo
+  static const logoBg = Color(0xFFFAE6CE); // couleur de fond exacte du logo fourni
 }
 
 class AppTheme {
