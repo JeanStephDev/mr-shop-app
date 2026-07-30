@@ -1,5 +1,5 @@
-name: mr_shop_client
-description: MR Shop — Fresh Scent by Elo — application client
+name: MR SHOP
+description: MR Shop — by Elo — application client
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -54,7 +54,7 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "assets/images/logo.png"
   min_sdk_android: 21
   web:
