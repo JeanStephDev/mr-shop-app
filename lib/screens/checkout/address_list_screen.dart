@@ -43,7 +43,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                       child: ListTile(
                         leading: const Icon(Icons.location_on_outlined, color: AppColors.orange),
                         title: Text(address.label ?? 'Adresse'),
-                        subtitle: Text(address.fullAddress),
+                        subtitle: Text(address.shortSummary),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => PaymentMethodScreen(address: address)),
                         ),

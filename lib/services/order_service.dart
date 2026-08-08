@@ -12,6 +12,7 @@ class OrderService {
     required String paymentMethod, // 'mobile_money' | 'cash_on_delivery'
     String? promoCode,
     String? notes,
+    String? recipientPhone,
   }) async {
     try {
       final response = await _dio.post('/orders', data: {
@@ -20,6 +21,7 @@ class OrderService {
         'payment_method': paymentMethod,
         if (promoCode != null && promoCode.isNotEmpty) 'promo_code': promoCode,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (recipientPhone != null && recipientPhone.isNotEmpty) 'recipient_phone': recipientPhone,
       });
       return OrderModel.fromJson(response.data);
     } on DioException catch (e) {

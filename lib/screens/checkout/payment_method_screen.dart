@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/address.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/order_service.dart';
 import 'payment_webview_screen.dart';
@@ -18,9 +19,16 @@ class PaymentMethodScreen extends StatefulWidget {
 class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   String _method = 'mobile_money';
   bool _isPlacing = false;
+  bool _isRecipientMe = true;
   final _promoController = TextEditingController();
+  final _recipientPhoneController = TextEditingController();
 
   Future<void> _placeOrder() async {
+    if (!_isRecipientMe && _recipientPhoneController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Entrez le numéro de la personne qui reçoit')));
+      return;
+    }
+
     final cart = context.read<CartProvider>();
     setState(() => _isPlacing = true);
 
@@ -30,6 +38,9 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         items: cart.items,
         paymentMethod: _method,
         promoCode: _promoController.text.trim(),
+        // Ne modifie jamais le numéro du compte — seulement le contact pour
+        // CETTE commande. Vide = l'API utilise le numéro habituel par défaut.
+        recipientPhone: _isRecipientMe ? null : _recipientPhoneController.text.trim(),
       );
 
       cart.clear();
@@ -53,10 +64,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final myPhone = context.watch<AuthProvider>().user?.phone;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Paiement')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,12 +89,43 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               title: const Text('Paiement à la livraison'),
               activeColor: AppColors.orange,
             ),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 20),
+            const Text('Qui réceptionne la commande ?', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            if (myPhone != null)
+              Text('Votre numéro de compte : $myPhone', style: const TextStyle(color: AppColors.navySoft, fontSize: 12)),
+            const SizedBox(height: 8),
+            RadioListTile(
+              value: true,
+              groupValue: _isRecipientMe,
+              onChanged: (v) => setState(() => _isRecipientMe = v!),
+              title: const Text('C\'est moi qui réceptionne'),
+              activeColor: AppColors.orange,
+            ),
+            RadioListTile(
+              value: false,
+              groupValue: _isRecipientMe,
+              onChanged: (v) => setState(() => _isRecipientMe = v!),
+              title: const Text('Quelqu\'un d\'autre réceptionne'),
+              activeColor: AppColors.orange,
+            ),
+            if (!_isRecipientMe)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: TextField(
+                  controller: _recipientPhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(hintText: 'Numéro du destinataire pour cette commande'),
+                ),
+              ),
+
+            const SizedBox(height: 16),
             TextField(
               controller: _promoController,
               decoration: const InputDecoration(hintText: 'Code promo (optionnel)'),
             ),
-            const Spacer(),
+            const SizedBox(height: 20),
             Text('Sous-total : ${cart.subtotal.toStringAsFixed(0)} FCFA', style: const TextStyle(color: AppColors.navySoft)),
             const SizedBox(height: 4),
             const Text('Frais de livraison calculés à la validation', style: TextStyle(color: AppColors.navySoft, fontSize: 12)),
